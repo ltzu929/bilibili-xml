@@ -1,3 +1,9 @@
+# 项目名称
+
+请选择您喜欢的语言：
+
+- [中文说明](README-zh.md)
+- [English](README-en.md)
 # Bilibili 弹幕分析工具
 
 ## 项目简介
