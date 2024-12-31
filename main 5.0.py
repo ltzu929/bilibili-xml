@@ -11,9 +11,12 @@ import json
 import logging
 import os
 from tkinter import StringVar, Radiobutton
+import atexit  # 添加 atexit 模块，用于程序退出时清理资源
 
-# 设置日志记录，记录弹幕分析过程中的信息和错误
-logging.basicConfig(filename="danmaku_analysis.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.disable(logging.CRITICAL)  # 禁用日志记录
+
+# 全局变量用于存储下载的文件路径
+downloaded_files = []
 
 # 配置界面的外观
 ctk.set_appearance_mode("System")  # 设置外观模式为系统模式
@@ -80,12 +83,26 @@ def download_danmaku(danmaku_url, output_path):
         with open(output_path, "wb") as file:
             file.write(response.content)
         logging.info(f"弹幕文件已下载: {output_path}")
+        downloaded_files.append(output_path)  # 记录已下载文件
         return output_path
     except requests.RequestException as e:
         # 捕获下载异常并记录日志
         messagebox.showerror("错误", f"下载弹幕文件时出错: {e}")
         logging.error(f"下载弹幕文件时出错: {e}")
     return None
+
+# 在程序退出时清理下载的文件
+def cleanup_downloaded_files():
+    """
+    删除下载的临时文件。
+    """
+    for file_path in downloaded_files:
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                logging.info(f"已删除临时文件: {file_path}")
+        except Exception as e:
+            logging.error(f"删除文件时出错: {e}")
 
 # XML 转 JSON 的转换函数
 def xml_to_json(xml_file_path, output_json_path):
@@ -153,22 +170,8 @@ def filter_data_by_option(density_data, hot_words, option):
     """
     filtered_data = {'x': [], 'total': []}  # 初始化筛选后的数据
     for i, minute in enumerate(density_data['x']):
-        if option == "all":
-            # 显示全部数据
             filtered_data['x'].append(minute)
             filtered_data['total'].append(density_data['total'][i])
-        else:
-            # 按热词进行筛选
-            words_at_minute = [word for word, _ in hot_words[i][1]]  # 当前分钟的热词列表
-            if option == "ha" and "哈" in words_at_minute:
-                filtered_data['x'].append(minute)
-                filtered_data['total'].append(density_data['total'][i])
-            elif option == "cao" and "草" in words_at_minute:
-                filtered_data['x'].append(minute)
-                filtered_data['total'].append(density_data['total'][i])
-            elif option == "?" and "？" in words_at_minute:
-                filtered_data['x'].append(minute)
-                filtered_data['total'].append(density_data['total'][i])
     return filtered_data
 
 # 根据用户选择更新图表显示
@@ -221,6 +224,10 @@ def plot_density_with_hover_and_line(density_data, hot_words):
     ax.fill_between(x_new, y_smooth, color='skyblue', alpha=0.4)
     ax.plot(x_new, y_smooth, color='blue', label='弹幕密度', linewidth=2)
 
+    # 设置 X 和 Y 轴范围，确保没有负值
+    ax.set_xlim(left=0, right=max(x))  # X 轴最小值为 0
+    ax.set_ylim(bottom=0)  # Y 轴最小值为 0
+
     # 添加图表标题和轴标签
     ax.set_title("弹幕热度与热词 (/5min)", fontsize=16)
     ax.set_xlabel("时间（分钟）", fontsize=14)
@@ -240,10 +247,9 @@ def plot_density_with_hover_and_line(density_data, hot_words):
     vertical_line = ax.axvline(x=0, color='gray', linestyle='--', linewidth=1)
     vertical_line.set_visible(False)
 
-    # 鼠标悬停事件处理函数
     def on_hover(event):
         if event.inaxes == ax:  # 确保鼠标在绘图区内
-            if event.xdata is not None:  # 鼠标的 x 坐标有效
+            if event.xdata is not None and event.ydata is not None:  # 鼠标的 x 和 y 坐标有效
                 # 找到与鼠标最近的时间点
                 nearest_index = min(range(len(x)), key=lambda i: abs(x[i] - event.xdata))
                 nearest_minute = x[nearest_index]
@@ -253,7 +259,6 @@ def plot_density_with_hover_and_line(density_data, hot_words):
                 vertical_line.set_visible(True)
 
                 # 更新注释框的内容
-                annotation.xy = (nearest_minute, y[nearest_index])
                 text = f"时间: {nearest_minute} 分钟\n弹幕数量: {y[nearest_index]}"
                 if nearest_minute in hot_words_dict:
                     text += "\n热词:\n" + "\n".join([f"{word}: {count}" for word, count in hot_words_dict[nearest_minute]])
@@ -261,26 +266,12 @@ def plot_density_with_hover_and_line(density_data, hot_words):
                 annotation.set_text(text)
                 annotation.set_visible(True)
 
-                # 调整注释框的位置，避免超出边界
-                fig.canvas.draw_idle()  # 渲染文本
-                renderer = fig.canvas.get_renderer()
-                bbox = annotation.get_window_extent(renderer)  # 获取注释框的像素边界
-                annotation_width = bbox.width
-                annotation_height = bbox.height
-
-                # 默认偏移量
-                x_offset, y_offset = 20, 20
-
-                # 判断是否超出右边界
-                if event.x + x_offset + annotation_width > fig.bbox.width:
-                    x_offset = -annotation_width - 20
-
-                # 判断是否超出上边界
-                if event.y + y_offset + annotation_height > fig.bbox.height:
-                    y_offset = -annotation_height - 20
-
-                annotation.xytext = (x_offset, y_offset)
-                annotation.set_visible(True)
+                # 注释框直接基于鼠标位置动态设置
+                x_offset, y_offset =20, 20  # 默认偏移量
+                annotation.xy = (event.xdata, event.ydata)  # 基于图表的逻辑坐标
+                annotation.xytext = (event.x + x_offset, event.y + y_offset)  # 鼠标像素坐标
+                annotation.set_text(text)
+                # 强制刷新以确保注释框在鼠标旁边
                 fig.canvas.draw_idle()
             else:
                 # 鼠标不在有效区域时隐藏注释框和垂直线
@@ -322,13 +313,37 @@ def process_url_and_analyze():
     json_file_path = xml_file_path.replace('.xml', '.json')
     global json_data
     json_data = xml_to_json(xml_file_path, json_file_path)  # 将数据存储为全局变量
+    # 添加 JSON 文件到全局文件列表
+    if os.path.exists(json_file_path):
+        downloaded_files.append(json_file_path)
     if not json_data:
         return
-
+    downloaded_files.append(json_file_path)
     try:
         update_plot()  # 绘制图表
     except Exception as e:
         messagebox.showerror("错误", f"绘图失败: {e}")
+        
+def cleanup_downloaded_files():
+    """
+    删除下载的临时文件，包括 XML 和 JSON 文件。
+    """
+    for file_path in downloaded_files:
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                logging.info(f"已删除临时文件: {file_path}")
+        except Exception as e:
+            logging.error(f"删除文件时出错: {e}")
+
+
+# 或者使用 Tkinter 窗口的关闭事件
+def on_closing():
+    cleanup_downloaded_files()
+    root.destroy()
+
+# 注册退出时的清理函数
+atexit.register(cleanup_downloaded_files)
 
 # 创建主窗口
 root = ctk.CTk()
@@ -355,5 +370,8 @@ url_entry.pack(pady=5)
 
 url_button = ctk.CTkButton(root, text="处理 URL 并分析", command=process_url_and_analyze, corner_radius=20)
 url_button.pack(pady=20)
+
+# 绑定窗口关闭事件
+root.protocol("WM_DELETE_WINDOW", on_closing)
 
 root.mainloop()
