@@ -1,50 +1,67 @@
 from collections import defaultdict, Counter
-import xml.etree.ElementTree as ET
-from dataclasses import dataclass
-
-@dataclass
-class DanmakuData:
-    x: list
-    total: list
-    hot_words: list
-    comments: dict
+import json
+import logging
+from tkinter import messagebox
 
 class DanmakuAnalyzer:
-    @staticmethod
-    def xml_to_json(xml_content: str) -> DanmakuData:
-        try:
-            root = ET.fromstring(xml_content)
-            danmaku_per_minute = defaultdict(list)
+    def __init__(self, downloader):
+        self.downloader = downloader
+        self.json_data = None
 
-            for d in root.findall('d'):
-                p = d.get('p').split(',')
-                time = float(p[0])
-                content = d.text if d.text else ""
-                
-                # 弹幕归一化处理
-                content = DanmakuAnalyzer._normalize_danmaku(content)
-                minute = int(time // 60)
-                danmaku_per_minute[minute].append(content)
+    def process_danmaku(self, video_id, cids):
+        total_cids = len(cids)
+        completed_cids = 0
 
-            return DanmakuData(
-                x=sorted(danmaku_per_minute.keys()),
-                total=[len(danmaku_per_minute[m]) for m in sorted(danmaku_per_minute.keys())],
-                hot_words=[[m, Counter(danmaku_per_minute[m]).most_common(10)] 
-                          for m in sorted(danmaku_per_minute.keys())],
-                comments={str(m): danmaku_per_minute[m] 
-                         for m in sorted(danmaku_per_minute.keys())}
-            )
-        except Exception as e:
-            raise ValueError(f"XML解析失败: {str(e)}")
+        aggregated_danmaku_per_minute = defaultdict(list)
+        aggregated_hot_words = defaultdict(Counter)
+        aggregated_comments = defaultdict(list)
 
-    @staticmethod
-    def _normalize_danmaku(content: str) -> str:
-        # 统一常见弹幕格式
-        normalized = content.strip()
-        if all(char in "哈" for char in normalized):
-            return "哈"
-        if all(char in "？?" for char in normalized):
-            return "？"
-        if normalized in ["艹", "草"]:
-            return "草"
-        return normalized
+        for cid in cids:
+            if not self.downloader.download_danmaku(video_id, cid):
+                continue
+
+            json_data = self.xml_to_json(video_id, cid)
+            if not json_data:
+                continue
+
+            # 合并弹幕密度
+            for minute, total in zip(json_data['density']['x'], json_data['density']['total']):
+                aggregated_danmaku_per_minute[minute].append(total)
+
+            # 合并热词
+            for minute, words in json_data['hot_words']:
+                for word, count in words:
+                    aggregated_hot_words[minute][word] += count
+
+            # 合并评论文本
+            for minute_str, comments_list in json_data['comments'].items():
+                minute_int = int(minute_str)
+                aggregated_comments[minute_int].extend(comments_list)
+
+            completed_cids += 1
+
+        if not aggregated_danmaku_per_minute:
+            messagebox.showerror("错误", "未能下载任何弹幕文件。")
+            return
+
+        merged_density = {
+            'x': sorted(aggregated_danmaku_per_minute.keys()),
+            'total': [sum(aggregated_danmaku_per_minute[m]) for m in sorted(aggregated_danmaku_per_minute.keys())]
+        }
+
+        merged_hot_words = []
+        for minute in sorted(aggregated_hot_words.keys()):
+            merged_hot_words.append([minute, aggregated_hot_words[minute].most_common(10)])
+
+        merged_comments = {
+            str(m): aggregated_comments[m]
+            for m in sorted(aggregated_comments.keys())
+        }
+
+        self.json_data = {
+            'density': merged_density,
+            'hot_words': merged_hot_words,
+            'comments': merged_comments
+        }
+
+        return self.json_data
