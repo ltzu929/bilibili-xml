@@ -65,7 +65,7 @@ class DanmakuApp:
         header_frame = ctk.CTkFrame(self.main_container, height=80, corner_radius=16,
                                    fg_color=("#EBF5FF", "#2B2B2B"),
                                    border_width=1, border_color="#E0E0E0",
-                                   bg_color="linear-gradient(90deg, #1E90FF 0%, #7EC8FF 100%)")
+                                   bg_color="#1E90FF")
         header_frame.pack(fill="x", pady=(0,20))
         
         # 标题文字
@@ -110,7 +110,7 @@ class DanmakuApp:
         self.analyze_btn = ctk.CTkButton(
             btn_group,
             text="开始分析",
-            corner_radius=24,
+            corner_radius=20,
             border_width=2,
             border_color="#FFFFFF",
             fg_color=("#1E90FF", "#004E98"),
@@ -119,10 +119,6 @@ class DanmakuApp:
             command=self.process_url_and_analyze,
             width=120,
             height=40,
-            corner_radius=20,
-            fg_color=("#1E90FF", "#004E98"),
-            hover_color=("#0066CC", "#003366"),
-            font=("Microsoft YaHei", 14, "bold"),
             state="disabled"
         )
         self.analyze_btn.pack(side="left", padx=10)
@@ -156,7 +152,7 @@ class DanmakuApp:
             corner_radius=24,
             fg_color=("#FFFFFF", "#2B2B2B"),
             border_width=1,
-            border_color="rgba(0,0,0,0.1)"
+            border_color="#E0E0E0"
         )
         self.viz_frame.pack(fill="both", expand=True, pady=10)
         
