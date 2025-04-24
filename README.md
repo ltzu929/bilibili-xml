@@ -40,9 +40,6 @@
 - 前端：Bootstrap 5, ECharts
 - 数据分析：NumPy, SciPy, jieba
 
-## 截图
-
-(在此添加应用截图)
 
 ## 许可证
 
