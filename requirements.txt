@@ -1,8 +1,0 @@
-flask
-requests
-jieba
-numpy
-scipy
-matplotlib
-pywebview==3.6.3
-pyinstaller==4.5.1
