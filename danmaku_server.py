@@ -2,8 +2,10 @@ from flask import Flask, request, jsonify, Response, send_from_directory
 import requests
 import re
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 # 静态文件托管，支持直接通过 http://127.0.0.1:5000/ 访问前端页面
 @app.route('/')
@@ -60,22 +62,8 @@ def get_danmaku():
     return Response(resp.content, mimetype='application/xml')
 
 if __name__ == '__main__':
-    import webbrowser
+
     import threading
     import time
-    
-    def open_browser():
-        try:
-            # 等待服务器完全启动
-            time.sleep(2)
-            # 尝试打开浏览器
-            webbrowser.open('http://127.0.0.1:5000/')
-        except Exception as e:
-            print(f"无法自动打开浏览器: {e}")
-            print("请手动访问: http://127.0.0.1:5000")
-    
-    # 启动浏览器线程
-    threading.Timer(0.1, open_browser).start()
-    
-    # 启动Flask服务器
+
     app.run(host='127.0.0.1', port=5000)
