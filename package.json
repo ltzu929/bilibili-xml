@@ -1,0 +1,52 @@
+{
+  "name": "bili-highlight-finder",
+  "version": "1.1.0",
+  "description": "Desktop application to find highlight moments in Bilibili live stream recordings by analyzing danmaku density.",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "echo 'Please run the server and frontend in separate terminals for development.' && exit 1",
+    "build": "vite build",
+    "package": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "recharts": "^3.1.2",
+    "xml-js": "^1.6.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.12",
+    "@types/react": "^19.1.11",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.21",
+    "electron": "^29.1.5",
+    "electron-builder": "^24.13.3",
+    "tailwindcss": "^4.1.12",
+    "vite": "^5.2.8",
+    "vite-plugin-html": "^3.2.2"
+  },
+  "build": {
+    "appId": "com.example.bilihighlightfinder",
+    "productName": "BiliHighlight Finder",
+    "files": [
+      "dist/**/*",
+      "server/index.js",
+      "electron/main.js"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}
