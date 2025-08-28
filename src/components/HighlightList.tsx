@@ -30,8 +30,22 @@ export const HighlightList: React.FC<HighlightListProps> = ({ highlights, bvId }
                 return (
                     <div
                         key={index}
-                        onClick={() => window.electronAPI.openExternal(url)}
+                        onClick={() => {
+                            try {
+                                if (window.electronAPI && window.electronAPI.openExternal) {
+                                    window.electronAPI.openExternal(url);
+                                } else {
+                                    // Fallback: open in new tab if electronAPI is not available
+                                    window.open(url, '_blank');
+                                }
+                            } catch (error) {
+                                console.error('Failed to open external link:', error);
+                                // Last resort fallback
+                                window.open(url, '_blank');
+                            }
+                        }}
                         className="group block text-center p-3 bg-slate-700 rounded-md hover:bg-cyan-800/50 border border-slate-600 hover:border-cyan-600 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+                        title={`点击将在系统默认浏览器中打开视频 ${formatTimestamp(highlight.timestamp)} 处`}
                     >
                         <p className="font-mono text-lg font-semibold text-cyan-400 group-hover:text-cyan-300">
                             {formatTimestamp(highlight.timestamp)}

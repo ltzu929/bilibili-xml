@@ -49,7 +49,13 @@ app.on('ready', createWindow);
 
 // Handle the 'open-external-link' event from the renderer process
 ipcMain.on('open-external-link', (event, url) => {
-    shell.openExternal(url);
+    // 使用 shell.openExternal 打开系统默认浏览器
+    // 这个方法会调用系统的默认浏览器，保持用户的登录状态和扩展
+    shell.openExternal(url).catch(err => {
+        console.error('Failed to open external URL:', err);
+        // 如果失败，尝试使用备用方案
+        require('child_process').exec(`start ${url}`);
+    });
 });
 
 app.on('window-all-closed', () => {
@@ -66,7 +72,6 @@ app.on('before-quit', () => {
         serverProcess = null;
     }
 });
-
 
 app.on('activate', () => {
     if (mainWindow === null) {
