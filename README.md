@@ -1,6 +1,7 @@
 # BiliHighlight Finder (B站直播回放高能时刻探测器)
 
 该项目已弃，如有需要，请前往https://github.com/ltzu929/bili-danmaku-analyzer
+
 这是一个桌面应用，旨在帮助B站UP主通过分析直播回放的弹幕数据，快速定位和剪辑“高能时刻”。
 
 本应用使用 Electron 打包，将前端界面与后端分析服务整合为一个独立的 `.exe` 文件，无需安装 Node.js 环境即可运行。
